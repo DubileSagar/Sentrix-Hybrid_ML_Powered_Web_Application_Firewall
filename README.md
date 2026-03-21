@@ -1,0 +1,40 @@
+# 🛡️ Sentrix — Hybrid ML-Powered Web Application Firewall
+
+> Intelligent HTTP request inspection combining Rule Engine + DistilBERT Transformer
+
+[![Python](https://img.shields.io/badge/Python-3.11-blue)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green)]()
+[![DistilBERT](https://img.shields.io/badge/Model-DistilBERT-orange)]()
+
+## Architecture
+Client Request → Parser → Normalizer → Formatter → Rule Engine (regex) → DistilBERT Classifier → Decision Engine → allow / block / flag → SQLite Logger → FastAPI Response
+
+
+## Attack Classes
+| Class | Description |
+|---|---|
+| benign | Safe request |
+| sqli | SQL Injection |
+| xss | Cross-Site Scripting |
+| traversal | Path Traversal |
+| cmdi | Command Injection |
+
+## Quick Start
+```bash
+pip install -r requirements.txt
+python src/preprocessing/augmentor.py
+python src/models/train.py
+uvicorn api.app:app --reload --port 8000
+streamlit run dashboard/streamlit_app.py
+python demo_app/app.py
+```
+
+## Build Progress
+- [ ] Preprocessing pipeline
+- [ ] Rule engine
+- [ ] ML models
+- [ ] Decision engine
+- [ ] FastAPI service
+- [ ] Streamlit dashboard
+- [ ] Demo app
+- [ ] Docker

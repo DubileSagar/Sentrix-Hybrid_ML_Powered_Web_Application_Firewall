@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+models_saved/
+logs/
+*.db
+.DS_Store
+.ipynb_checkpoints/
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+node_modules/
+*.pkl
+*.pt
