@@ -30,11 +30,11 @@ python demo_app/app.py
 ```
 
 ## Build Progress
-- [ ] Preprocessing pipeline
-- [ ] Rule engine
-- [ ] ML models
-- [ ] Decision engine
-- [ ] FastAPI service
-- [ ] Streamlit dashboard
-- [ ] Demo app
-- [ ] Docker
+- [x] Preprocessing pipeline
+- [x] Rule engine
+- [x] ML models
+- [x] Decision engine
+- [x] FastAPI service
+- [x] Streamlit dashboard
+- [x] Demo app
+- [x] Docker

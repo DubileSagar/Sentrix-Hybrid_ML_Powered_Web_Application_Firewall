@@ -1,0 +1,13 @@
+version: "3.8"
+services:
+  sentrix-waf:
+    build: .
+    container_name: sentrix-hybrid-waf
+    ports:
+      - "8000:8000"  # WAF API
+      - "8501:8501"  # Streamlit Dashboard
+      - "5000:5000"  # Demo App
+    volumes:
+      - ./logs:/app/logs
+      - ./models_saved:/app/models_saved
+    restart: always
