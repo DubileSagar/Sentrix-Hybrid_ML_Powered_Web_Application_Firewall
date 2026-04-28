@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sentrix-waf-proxy
+  namespace: sentrix-waf
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: waf
+  template:
+    metadata:
+      labels:
+        app: waf
+    spec:
+      containers:
+      - name: waf
+        image: gcr.io/PROJECT/waf:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: TARGET_URL
+          value: "http://demo-service.sentrix-waf.svc.cluster.local:5001"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: waf-loadbalancer
+  namespace: sentrix-waf
+spec:
+  selector:
+    app: waf
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8000
+  type: LoadBalancer

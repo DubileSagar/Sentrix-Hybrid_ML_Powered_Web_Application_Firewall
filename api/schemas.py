@@ -14,3 +14,5 @@ class WAFDecision(BaseModel):
     reason: str = Field(..., json_schema_extra={"example": "Rule matched: union select"})
     confidence: float = Field(..., json_schema_extra={"example": 1.0})
     rule_matched: Optional[str] = Field(None, json_schema_extra={"example": "union select"})
+    model_used: str = Field(default="distilbert", json_schema_extra={"example": "distilbert"})
+    all_probabilities: Dict[str, float] = Field(default_factory=dict, json_schema_extra={"example": {"benign": 0.01, "sqli": 0.97, "xss": 0.01, "traversal": 0.005, "cmdi": 0.005}})

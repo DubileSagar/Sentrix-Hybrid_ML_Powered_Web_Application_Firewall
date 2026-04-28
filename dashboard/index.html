@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentrix WAF — Threat Intelligence Command</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ── RESET & BASE ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  /* Amethyst Midnight Palette — Unique & Professional */
+  --bg-deep:#030107;
+  --bg-surface:#0a061a;
+  --panel:rgba(22, 11, 44, 0.45);
+  --panel-bright:rgba(36, 18, 70, 0.6);
+  --border:rgba(157, 80, 187, 0.15);
+  --border-bright:rgba(157, 80, 187, 0.4);
+  
+  --primary:#9d50bb; /* Amethyst */
+  --primary-glow:rgba(157, 80, 187, 0.4);
+  --secondary:#6e48aa; /* Indigo */
+  
+  --safe:#00f260; /* Emerald */
+  --safe-glow:rgba(0, 242, 96, 0.3);
+  --threat:#ff416c; /* Ruby */
+  --threat-glow:rgba(255, 65, 108, 0.4);
+  --warning:#ffb347; /* Amber */
+  --warning-glow:rgba(255, 179, 71, 0.3);
+  
+  --text:#f5f2ff;
+  --text-dim:#b0a8cc;
+  --text-muted:#6e658a;
+  
+  --sidebar-w:240px;
+  --glass-blur:20px;
+}
+
+body{
+  font-family:'Plus Jakarta Sans',sans-serif;
+  background:var(--bg-deep);
+  color:var(--text);
+  height:100vh;
+  overflow:hidden;
+  display:flex;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── AMETHYST MESH GRADIENT ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(110, 72, 170, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 100% 100%, rgba(157, 80, 187, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 50% 50%, rgba(5, 2, 10, 1) 0%, rgba(3, 1, 7, 1) 100%);
+  z-index:-1;
+}
+
+/* ── SIDEBAR (Permanent) ── */
+.sidebar{
+  width:var(--sidebar-w);
+  height:100vh;
+  background:rgba(5, 2, 10, 0.8);
+  backdrop-filter:blur(var(--glass-blur));
+  border-right:1px solid var(--border);
+  display:flex;flex-direction:column;
+  position:relative;z-index:100;
+  flex-shrink:0;
+}
+
+.brand{
+  padding:32px 24px;
+  display:flex;align-items:center;gap:14px;
+}
+.brand-icon{
+  width:40px;height:40px;border-radius:12px;
+  background:linear-gradient(135deg, var(--primary), var(--secondary));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:18px;color:#fff;
+  box-shadow:0 8px 16px var(--primary-glow);
+}
+.brand-text{display:flex;flex-direction:column;}
+.brand-text .b1{font-size:18px;font-weight:800;color:var(--text);letter-spacing:-0.5px;}
+.brand-text .b2{font-size:10px;color:var(--primary);font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+
+.nav-items{flex:1;padding:20px 12px;display:flex;flex-direction:column;gap:6px;}
+.nav-item{
+  width:100%;height:52px;
+  display:flex;align-items:center;
+  padding:0 16px;gap:14px;
+  cursor:pointer;
+  border:none;background:transparent;
+  color:var(--text-dim);
+  font-family:inherit;font-size:14px;font-weight:600;
+  border-radius:12px;
+  transition:all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+  position:relative;
+}
+.nav-item:hover{background:rgba(255,255,255,0.03);color:var(--text);}
+.nav-item.active{
+  background:linear-gradient(90deg, rgba(157, 80, 187, 0.15), transparent);
+  color:var(--primary);
+}
+.nav-item.active::after{
+  content:'';position:absolute;right:0;top:15%;bottom:15%;width:4px;
+  background:var(--primary);border-radius:4px 0 0 4px;
+  box-shadow:-4px 0 10px var(--primary-glow);
+}
+.nav-icon{font-size:20px;opacity:0.8;}
+
+.sidebar-footer{padding:24px;border-top:1px solid var(--border);}
+.status-card{
+  background:rgba(255,255,255,0.03);
+  padding:14px;border-radius:14px;
+  border:1px solid var(--border);
+}
+.status-label{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.status-value{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--primary);}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--primary);box-shadow:0 0 8px var(--primary-glow);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+
+/* ── MAIN CONTENT ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+
+/* TOPBAR */
+.topbar{
+  height:80px;padding:0 40px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--border);
+}
+.topbar h1{font-size:24px;font-weight:800;letter-spacing:-0.5px;}
+.topbar-actions{display:flex;align-items:center;gap:32px;}
+.conn-status{display:flex;align-items:center;gap:10px;padding:8px 16px;background:rgba(0, 242, 96, 0.05);border-radius:30px;border:1px solid rgba(0, 242, 96, 0.1);}
+.conn-dot{width:8px;height:8px;border-radius:50%;background:var(--safe);box-shadow:0 0 10px var(--safe-glow);}
+.conn-text{font-size:11px;font-weight:800;color:var(--safe);text-transform:uppercase;letter-spacing:1px;}
+
+/* ── PAGES ── */
+.page{display:none;flex:1;overflow-y:auto;padding:32px 40px;animation:pageIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.page.active{display:flex;flex-direction:column;gap:32px;height:100%;}
+
+/* KPI CARDS */
+.kpi-row{display:grid;grid-template-columns:repeat(5, 1fr);gap:20px;}
+.kpi-card{
+  background:var(--panel);
+  backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--border);
+  padding:24px;border-radius:24px;
+  display:flex;flex-direction:column;gap:12px;
+  transition:all 0.3s ease;
+}
+.kpi-card:hover{transform:translateY(-4px);border-color:var(--border-bright);box-shadow:0 12px 24px rgba(0,0,0,0.2);}
+.kpi-head{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:1.5px;}
+.kpi-body{display:flex;align-items:baseline;gap:8px;}
+.kpi-value{font-size:32px;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--text);}
+.kpi-card.accent-amethyst .kpi-value{color:var(--primary);text-shadow:0 0 15px var(--primary-glow);}
+.kpi-card.accent-emerald .kpi-value{color:var(--safe);text-shadow:0 0 15px var(--safe-glow);}
+.kpi-card.accent-ruby .kpi-value{color:var(--threat);text-shadow:0 0 15px var(--threat-glow);}
+.kpi-card.accent-amber .kpi-value{color:var(--warning);text-shadow:0 0 15px var(--warning-glow);}
+
+/* PANELS */
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:24px;flex:1;min-height:0;}
+.grid-1-2{display:grid;grid-template-columns:340px 1fr;gap:24px;}
+
+.panel{
+  background:var(--panel);
+  backdrop-filter:blur(var(--glass-blur));
+  border:1px solid var(--border);
+  border-radius:28px;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.panel-header{
+  padding:20px 24px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.panel-title{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);}
+.panel-body{padding:24px;flex:1;overflow-y:auto;transition:max-height 0.3s ease-out;}
+.panel.minimized{height:60px !important;min-height:60px !important;}
+.panel.minimized .panel-body{display:none;}
+.panel.maximized{
+  position:fixed;top:24px;left:324px;right:24px;bottom:24px;
+  z-index:9999;background:var(--panel-dark);
+  backdrop-filter:blur(30px);border-color:var(--primary);
+  height:auto !important;
+}
+.panel.resizable{resize:vertical;overflow:hidden;min-height:200px;}
+.panel-controls{display:flex;gap:12px;align-items:center;}
+.btn-util{
+  width:24px;height:24px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  cursor:pointer;font-size:14px;color:var(--text-dim);transition:all 0.2s;
+}
+.btn-util:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+/* DOSSIER STYLES */
+.dossier{margin-top:24px;display:flex;flex-direction:column;gap:16px;}
+.d-row{display:flex;flex-direction:column;gap:6px;}
+.d-label{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:var(--text-dim);}
+.d-bar-bg{height:6px;background:rgba(255,255,255,0.05);border-radius:10px;overflow:hidden;}
+.d-bar-fill{height:100%;border-radius:10px;transition:width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);}
+
+/* EXPORT BUTTON & MODAL */
+.btn-icon{
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--border);
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;color:var(--text-dim);
+  transition:all 0.2s;
+}
+.btn-icon:hover{background:var(--primary);color:#fff;border-color:var(--primary);}
+
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(8px);
+  z-index:1000;display:none;align-items:center;justify-content:center;
+  animation:fadeIn 0.2s ease;
+}
+.modal{
+  background:var(--bg-surface);
+  border:1px solid var(--border-bright);
+  border-radius:32px;width:100%;max-width:500px;
+  padding:40px;display:flex;flex-direction:column;gap:32px;
+  box-shadow:0 24px 48px rgba(0,0,0,0.5);
+}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-title{font-size:24px;font-weight:800;}
+.export-options{display:grid;grid-template-columns:1fr;gap:20px;}
+.export-group{display:flex;flex-direction:column;gap:12px;}
+.export-label{font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;}
+
+.input-group{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.input-field{
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:12px;padding:12px;
+  color:var(--text);font-family:inherit;font-size:14px;outline:none;
+}
+.input-field:focus{border-color:var(--primary);}
+
+.btn-primary{
+  background:linear-gradient(135deg, var(--primary), var(--secondary));
+  color:#fff;border:none;padding:16px;border-radius:14px;
+  font-weight:800;font-size:14px;cursor:pointer;
+  transition:all 0.3s;box-shadow:0 8px 16px var(--primary-glow);
+}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 12px 24px var(--primary-glow);}
+.btn-secondary{
+  background:rgba(255,255,255,0.05);
+  color:var(--text);border:1px solid var(--border);padding:16px;border-radius:14px;
+  font-weight:800;font-size:14px;cursor:pointer;
+}
+
+/* TABLE STYLES */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;padding:16px;font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;border-bottom:1px solid var(--border);}
+td{padding:16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.02);font-family:'JetBrains Mono',monospace;}
+.badge{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:800;text-transform:uppercase;}
+.badge.allow{background:rgba(0, 242, 96, 0.1);color:var(--safe);}
+.badge.block{background:rgba(255, 65, 108, 0.1);color:var(--threat);}
+
+/* ── PRINT OPTIMIZATION (PDF) ── */
+@media print {
+  body{background:#fff !important;color:#000 !important;overflow:visible !important;}
+  .sidebar, .topbar, .kpi-row, .charts-grid, .btn-icon, .modal-overlay, .nav-items, .nav-item, .sidebar-footer{display:none !important;}
+  .main{display:block !important;padding:0 !important;}
+  .page{display:block !important;padding:40px !important;animation:none !important;}
+  .panel{border:none !important;background:none !important;}
+  .panel-header{border-bottom:2px solid #000 !important;}
+  .feed-list{display:block !important;}
+  .feed-row{border-bottom:1px solid #eee !important;page-break-inside:avoid;}
+  .print-header{display:block !important;margin-bottom:40px;}
+  .print-only{display:block !important;}
+}
+.print-only{display:none;}
+
+/* ── ADDITIONAL UI ELEMENTS ── */
+.ring-container{position:relative;width:220px;height:220px;margin:20px auto;}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.ring-val{font-size:36px;font-weight:800;color:var(--threat);}
+.ring-lbl{font-size:10px;font-weight:800;color:var(--text-muted);text-transform:uppercase;}
+
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="brand">
+    <div class="brand-icon">S</div>
+    <div class="brand-text">
+      <div class="b1">Sentrix WAF</div>
+      <div class="b2">Intelligent Edge</div>
+    </div>
+  </div>
+
+  <div class="nav-items">
+    <div class="nav-item active" onclick="showPage('monitor', this)">
+      <span class="nav-icon">📊</span>
+      <span class="nav-label">Live Monitor</span>
+    </div>
+    <div class="nav-item" onclick="showPage('forensic', this)">
+      <span class="nav-icon">🔍</span>
+      <span class="nav-label">Forensic Lab</span>
+    </div>
+    <div class="nav-item" onclick="showPage('tester', this)">
+      <span class="nav-icon">⚡</span>
+      <span class="nav-label">Payload Lab</span>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="status-card">
+      <div class="status-label">Security Engine</div>
+      <div class="status-value">
+        <div class="status-dot"></div>
+        DistilBERT v2.0
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <h1 id="page-title">Threat Command Center</h1>
+    <div class="topbar-actions">
+      <div class="conn-status">
+        <div class="conn-dot"></div>
+        <span class="conn-text">Edge Connected</span>
+      </div>
+      <span class="latency" style="color:var(--text-muted);font-family:'JetBrains Mono';font-size:12px;" id="latency-label">latency: --ms</span>
+    </div>
+  </header>
+
+  <!-- PRINT HEADER -->
+  <div class="print-only print-header">
+    <h1 style="font-size:32px;margin-bottom:10px;">Sentrix WAF - Forensic Traffic Report</h1>
+    <p style="color:#666;" id="print-date-range">Report Generated On: --</p>
+  </div>
+
+  <!-- PAGE: MONITOR -->
+  <div class="page active" id="page-monitor">
+    <div class="kpi-row">
+      <div class="kpi-card accent-amethyst">
+        <span class="kpi-head">Total Intercepted</span>
+        <div class="kpi-body">
+          <span class="kpi-value" id="k-total">0</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-emerald">
+        <span class="kpi-head">Safe Requests</span>
+        <div class="kpi-body">
+          <span class="kpi-value" id="k-allow">0</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-ruby">
+        <span class="kpi-head">Threats Blocked</span>
+        <div class="kpi-body">
+          <span class="kpi-value" id="k-block">0</span>
+        </div>
+      </div>
+      <div class="kpi-card accent-amber">
+        <span class="kpi-head">Block Rate</span>
+        <div class="kpi-body">
+          <span class="kpi-value" id="k-rate">0%</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-head">Req / Sec</span>
+        <div class="kpi-body">
+          <span class="kpi-value" id="k-rps">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="panel resizable" id="panel-traffic">
+        <div class="panel-header">
+          <span class="panel-title">Live Attack Throughput</span>
+          <div class="panel-controls">
+            <div class="btn-util" onclick="togglePanel('panel-traffic', 'min')" title="Minimize">_</div>
+            <div class="btn-util" onclick="togglePanel('panel-traffic', 'max')" title="Expand">⛶</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <canvas id="trafficChart"></canvas>
+        </div>
+      </div>
+      <div class="panel resizable" id="panel-composition">
+        <div class="panel-header">
+          <span class="panel-title">Threat Composition</span>
+          <div class="panel-controls">
+            <div class="btn-util" onclick="togglePanel('panel-composition', 'min')" title="Minimize">_</div>
+            <div class="btn-util" onclick="togglePanel('panel-composition', 'max')" title="Expand">⛶</div>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="ring-container" style="width:180px;height:180px;">
+            <canvas id="donutChart"></canvas>
+            <div class="ring-center">
+              <div class="ring-val" id="ring-pct" style="font-size:28px;">0%</div>
+              <div class="ring-lbl">Risk Level</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel resizable" id="panel-feed">
+        <div class="panel-header">
+          <span class="panel-title">Live Traffic Feed</span>
+          <div class="panel-controls">
+            <div class="btn-icon" title="Export Logs" onclick="toggleExportModal(true)" style="width:24px;height:24px;font-size:12px;">📥</div>
+            <div class="btn-util" onclick="togglePanel('panel-feed', 'min')" title="Minimize">_</div>
+            <div class="btn-util" onclick="togglePanel('panel-feed', 'max')" title="Expand">⛶</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table style="font-size:11px;">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>IP</th>
+                <th>Path</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="feed-list"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: FORENSIC -->
+  <div class="page" id="page-forensic">
+    <!-- Forensic Content (Simplified for Theme) -->
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Batch Log Scanner</span></div>
+      <div class="panel-body" style="text-align:center;padding:100px;">
+        <div style="font-size:48px;margin-bottom:20px;">📂</div>
+        <h2 style="margin-bottom:10px;">Forensic Sequence Discovery</h2>
+        <p style="color:var(--text-muted);margin-bottom:30px;">Drop your .csv logs here to run full DistilBERT classification.</p>
+        <button class="btn-primary" onclick="alert('Batch scanner ready. Drop files anywhere.')">Initialize Scanner</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE: TESTER -->
+  <div class="page" id="page-tester">
+    <!-- Tester Content -->
+    <div class="grid-1-2">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Payload Presets</span></div>
+        <div class="panel-body" id="chips-container">
+          <!-- Dynamic presets -->
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Attack Inspector</span></div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:20px;">
+            <div class="export-group">
+                <label class="export-label">Target Method & Path</label>
+                <div class="input-group">
+                    <select id="fx-method" class="input-field"><option>POST</option><option>GET</option></select>
+                    <input type="text" id="fx-path" class="input-field" value="/login">
+                </div>
+            </div>
+            <div class="export-group">
+                <label class="export-label">Payload Content</label>
+                <textarea id="fx-payload" class="input-field" style="height:120px;resize:none;" placeholder="Insert payload here..."></textarea>
+            </div>
+            <button class="btn-primary" onclick="firePayload()">🔥 Fire Through WAF</button>
+            <div id="result-card" style="display:none;padding:32px;border-radius:24px;border:1px solid">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h2 id="rc-verdict" style="font-size:24px;font-weight:800;"></h2>
+                    <span id="rc-latency" style="font-family:'JetBrains Mono';font-size:12px;color:var(--text-muted);"></span>
+                </div>
+                <div id="rc-meta" style="margin-top:10px;font-size:12px;color:var(--text-dim);display:flex;gap:16px;">
+                    <span id="rc-engine"></span>
+                    <span id="rc-rules"></span>
+                </div>
+                <div class="dossier" id="prob-dossier"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- EXPORT MODAL -->
+<div class="modal-overlay" id="export-modal" onclick="event.target === this && toggleExportModal(false)">
+  <div class="modal">
+    <h2 class="modal-title">Export Forensic Logs</h2>
+    
+    <div class="export-options">
+      <div class="export-group">
+        <label class="export-label">Quick Selection</label>
+        <select id="export-timeframe" class="input-field">
+          <option value="24h">Last 24 Hours</option>
+          <option value="7d">Last 7 Days</option>
+          <option value="30d">Last 30 Days</option>
+          <option value="this_month">Current Month</option>
+          <option value="last_month">Last Month</option>
+          <option value="this_year">Current Year</option>
+          <option value="all">Full History</option>
+        </select>
+      </div>
+
+      <div class="export-group">
+        <label class="export-label">Custom Date Range</label>
+        <div class="input-group">
+          <input type="datetime-local" id="export-start" class="input-field">
+          <input type="datetime-local" id="export-end" class="input-field">
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <button class="btn-primary" onclick="downloadLogs('csv')">Download CSV</button>
+      <button class="btn-secondary" onclick="exportPDF()">Generate PDF</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── NAVIGATION ── */
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  document.getElementById('page-title').textContent = name.charAt(0).toUpperCase() + name.slice(1) + (name==='monitor'?' Command Center':' Lab');
+}
+
+/* ── PANEL CONTROLS ── */
+function togglePanel(id, action) {
+  const p = document.getElementById(id);
+  if (action === 'min') {
+    p.classList.toggle('minimized');
+    p.classList.remove('maximized');
+  } else if (action === 'max') {
+    p.classList.toggle('maximized');
+    p.classList.remove('minimized');
+  }
+  
+  // Reflow charts
+  setTimeout(() => {
+    if (typeof trafficChart !== 'undefined') trafficChart.resize();
+    if (typeof donutChart !== 'undefined') donutChart.resize();
+  }, 350);
+}
+
+/* ── CHARTS ── */
+const ctxTraffic = document.getElementById('trafficChart').getContext('2d');
+const trafficChart = new Chart(ctxTraffic, {
+  type: 'line',
+  data: {
+    labels: Array(60).fill(''),
+    datasets: [
+      { label:'Safe', data:Array(60).fill(0), borderColor: '#00f260', tension:0.4, fill:true, backgroundColor:'rgba(0,242,96,0.05)', pointRadius:0 },
+      { label:'Threat', data:Array(60).fill(0), borderColor: '#ff416c', tension:0.4, fill:true, backgroundColor:'rgba(255,65,108,0.05)', pointRadius:0 }
+    ]
+  },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{display:false},y:{min:0, grid:{color:'rgba(255,255,255,0.02)'},ticks:{color:'#6e658a'}}} }
+});
+
+const ctxDonut = document.getElementById('donutChart').getContext('2d');
+const donutChart = new Chart(ctxDonut, {
+  type: 'doughnut',
+  data: { datasets:[{ data:[100,0], backgroundColor:['#6e48aa','#ff416c'], borderWidth:0, cutout:'85%' }] },
+  options: { responsive:true, maintainAspectRatio:false, plugins:{tooltip:{enabled:false}} }
+});
+
+/* ── EXPORT LOGIC ── */
+function toggleExportModal(show) {
+  document.getElementById('export-modal').style.display = show ? 'flex' : 'none';
+}
+
+function downloadLogs(format) {
+  const timeframe = document.getElementById('export-timeframe').value;
+  const start = document.getElementById('export-start').value;
+  const end = document.getElementById('export-end').value;
+  
+  let url = `/api/export-logs?format=${format}`;
+  if (start && end) {
+    url += `&start_date=${start}&end_date=${end}`;
+  } else {
+    url += `&timeframe=${timeframe}`;
+  }
+  
+  window.location.href = url;
+  toggleExportModal(false);
+}
+
+function exportPDF() {
+  // Use the Print Media approach for professional PDF
+  const timeframe = document.getElementById('export-timeframe').value;
+  document.getElementById('print-date-range').textContent = `Report Period: ${timeframe.replace('_', ' ')} (Generated: ${new Date().toLocaleString()})`;
+  toggleExportModal(false);
+  setTimeout(() => window.print(), 300);
+}
+
+/* ── DATA STREAMING ── */
+let counters = { total:0, allow:0, block:0 };
+let rps = { allow:0, block:0 };
+
+function connectWS() {
+  const ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}/ws/stream`);
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    updateUI(data);
+  };
+  ws.onclose = () => setTimeout(connectWS, 2000);
+}
+connectWS();
+
+function updateUI(data) {
+  counters.total++;
+  if (data.action === 'block') {
+    counters.block++;
+    rps.block++;
+    addFeedRow(data, true);
+  } else {
+    counters.allow++;
+    rps.allow++;
+    addFeedRow(data, false);
+  }
+  
+  document.getElementById('k-total').textContent = counters.total;
+  document.getElementById('k-allow').textContent = counters.allow;
+  document.getElementById('k-block').textContent = counters.block;
+  document.getElementById('k-rate').textContent = Math.round((counters.block / counters.total) * 100) + '%';
+  document.getElementById('ring-pct').textContent = Math.round((counters.block / counters.total) * 100) + '%';
+  
+  donutChart.data.datasets[0].data = [counters.allow, counters.block];
+  donutChart.update();
+}
+
+function addFeedRow(data, isBlock) {
+  const list = document.getElementById('feed-list');
+  const row = document.createElement('tr');
+  row.className = isBlock ? 'row-block' : 'row-allow';
+  row.innerHTML = `
+    <td>${new Date().toLocaleTimeString()}</td>
+    <td>${data.client_ip}</td>
+    <td title="${data.path}">${data.path.length > 15 ? data.path.substring(0,15)+'...' : data.path}</td>
+    <td style="text-align:right"><span class="badge ${isBlock?'block':'allow'}">${data.action}</span></td>
+  `;
+  list.prepend(row);
+  if (list.children.length > 50) list.removeChild(list.lastChild);
+}
+
+setInterval(() => {
+    document.getElementById('k-rps').textContent = rps.allow + rps.block;
+    trafficChart.data.datasets[0].data.shift();
+    trafficChart.data.datasets[0].data.push(rps.allow);
+    trafficChart.data.datasets[1].data.shift();
+    trafficChart.data.datasets[1].data.push(rps.block);
+    trafficChart.update();
+    rps = { allow:0, block:0 };
+}, 1000);
+
+/* ── TESTER LOGIC ── */
+const PRESETS = {
+  sqli: ["admin' OR 1=1--", "' UNION SELECT null,version()--", "1; DROP TABLE users--"],
+  xss: ["<script>alert(1)<\/script>", "<img src=x onerror=alert(1)>", "javascript:alert(1)"],
+  trav: ["../../../../etc/passwd", "..\\..\\windows\\system32", "/var/log/apache2/access.log"]
+};
+
+function initPresets() {
+    const container = document.getElementById('chips-container');
+    Object.entries(PRESETS).forEach(([type, payloads]) => {
+        payloads.forEach(p => {
+            const btn = document.createElement('button');
+            btn.className = 'nav-item';
+            btn.style.height = 'auto'; btn.style.padding = '10px'; btn.style.fontSize = '12px';
+            btn.textContent = p.length > 20 ? p.substring(0,20)+'...' : p;
+            btn.onclick = () => {
+                document.getElementById('fx-payload').value = p;
+                document.getElementById('fx-path').value = type === 'trav' ? '/files' : '/login';
+            };
+            container.appendChild(btn);
+        });
+    });
+}
+initPresets();
+
+async function firePayload() {
+    const p = document.getElementById('fx-payload').value;
+    const start = performance.now();
+    const res = await fetch('/analyze', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            client_ip: '127.0.0.1',
+            method: document.getElementById('fx-method').value,
+            path: document.getElementById('fx-path').value,
+            headers: {},
+            body: p
+        })
+    });
+    const d = await res.json();
+    const latency = (performance.now() - start).toFixed(0);
+    
+    const rc = document.getElementById('result-card');
+    rc.style.display = 'block';
+    rc.style.borderColor = d.action === 'block' ? 'var(--threat)' : 'var(--safe)';
+    rc.style.background = d.action === 'block' ? 'rgba(255,65,108,0.05)' : 'rgba(0,242,96,0.05)';
+    
+    document.getElementById('rc-verdict').textContent = d.action.toUpperCase() + ": " + d.final_label;
+    document.getElementById('rc-verdict').style.color = d.action === 'block' ? 'var(--threat)' : 'var(--safe)';
+    document.getElementById('rc-latency').textContent = `${latency}ms`;
+    document.getElementById('rc-engine').textContent = `Engine: ${d.model_used.toUpperCase()}`;
+    document.getElementById('rc-rules').textContent = d.rule_matched ? `Matched: ${d.rule_matched}` : '';
+    
+    // Render Dossier
+    const dossier = document.getElementById('prob-dossier');
+    dossier.innerHTML = '';
+    
+    if (d.all_probabilities) {
+        Object.entries(d.all_probabilities).sort((a,b) => b[1]-a[1]).forEach(([label, prob]) => {
+            const pct = (prob * 100).toFixed(1);
+            const color = label === 'benign' ? 'var(--safe)' : (prob > 0.5 ? 'var(--threat)' : 'var(--warning)');
+            const row = document.createElement('div');
+            row.className = 'd-row';
+            row.innerHTML = `
+                <div class="d-label"><span>${label.toUpperCase()}</span><span>${pct}%</span></div>
+                <div class="d-bar-bg"><div class="d-bar-fill" style="width:${pct}%; background:${color}; box-shadow:0 0 10px ${color}44"></div></div>
+            `;
+            dossier.appendChild(row);
+        });
+    }
+}
+
+document.body.onload = () => {
+    // Initial fetch of stats could go here
+};
+</script>
+</body>
+</html>

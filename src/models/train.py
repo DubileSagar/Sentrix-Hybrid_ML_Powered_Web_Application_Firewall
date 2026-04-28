@@ -114,7 +114,7 @@ def train_transformer(X_train, X_val, X_test, y_train, y_val, y_test, save_dir):
         output_dir=os.path.join(save_dir, 'checkpoints'),
         num_train_epochs=5, per_device_train_batch_size=16,
         per_device_eval_batch_size=32, learning_rate=2e-5,
-        weight_decay=0.01, evaluation_strategy='epoch',
+        weight_decay=0.01, eval_strategy='epoch',
         save_strategy='epoch', load_best_model_at_end=True,
         metric_for_best_model='eval_loss', report_to='none',
         logging_steps=10)

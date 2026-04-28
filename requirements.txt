@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+requests
+pandas
+streamlit
+transformers
+torch
+SQLAlchemy
+pydantic
+scikit-learn
+flask
+httpx
+plotly
+websockets
+python-multipart
